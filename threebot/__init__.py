@@ -9,6 +9,7 @@ import argparse
 import os
 import pymumble_py3 as pymumble
 from pymumble_py3.constants import PYMUMBLE_CLBK_USERCREATED
+from pymumble_py3.constants import PYMUMBLE_CLBK_USERREMOVED
 from pymumble_py3.constants import PYMUMBLE_CLBK_TEXTMESSAGERECEIVED
 import re
 import sys
@@ -120,6 +121,26 @@ def run():
             m=f'{datetime.now()} {metadata.author} ! exception in command: {bt}'
             print(m)
 
+    def leave_callback(data, x):
+        print(data, x)
+        """Called when a user leaves the server."""
+        c = db.conn.cursor()
+
+        # Log join to console
+        print(f'{datetime.now()} > {data.get_property("name")} left')
+
+        # check if user has greeting
+        c.execute('SELECT * FROM farewells WHERE username=?',
+                  [data.get_property('name')])
+
+        res = c.fetchone()
+
+        if res is not None:
+            try:
+                util.play_sound_or_alias(res[1])
+            except Exception as e:
+                print(f'Farewell failure: {str(e)}')
+
     def join_callback(data):
         """Called when a user joins the server."""
         c = db.conn.cursor()
@@ -142,7 +163,7 @@ def run():
             # No greeting, play random sound
             try:
                 target = db.random_sound()
-                util.play_sound_or_alias(target)
+                util.play_sound_or_alias(target, [])
 
                 m = f'Random greeting: {target} (!greeting to update)'
                 data.send_text_message(m)
@@ -156,6 +177,7 @@ def run():
                                 message_callback)
 
     conn.callbacks.add_callback(PYMUMBLE_CLBK_USERCREATED, join_callback)
+    conn.callbacks.add_callback(PYMUMBLE_CLBK_USERREMOVED, leave_callback)
 
     # Start audio thread
     audio.start(conn)

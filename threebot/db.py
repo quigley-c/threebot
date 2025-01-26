@@ -12,6 +12,7 @@ c.execute('CREATE TABLE IF NOT EXISTS pasta ( pastaname TEXT UNIQUE, content TEX
 c.execute('CREATE TABLE IF NOT EXISTS aliases ( commandname TEXT UNIQUE, action TEXT, author TEXT, timestamp DATETIME )')
 c.execute('CREATE TABLE IF NOT EXISTS sounds ( soundname TEXT UNIQUE, author TEXT, timestamp DATETIME, source TEXT, start FLOAT, len FLOAT )')
 c.execute('CREATE TABLE IF NOT EXISTS greetings ( username TEXT UNIQUE, greeting TEXT )')
+c.execute('CREATE TABLE IF NOT EXISTS farewells ( username TEXT UNIQUE, farewell TEXT )')
 c.execute('CREATE TABLE IF NOT EXISTS binds ( username TEXT UNIQUE, bind TEXT )')
 c.execute('CREATE TABLE IF NOT EXISTS groups ( groupname TEXT UNIQUE, content TEXT, author TEXT, timestamp DATETIME )')
 c.execute('CREATE TABLE IF NOT EXISTS cycles ( sound TEXT, author TEXT )')

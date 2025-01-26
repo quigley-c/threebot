@@ -31,7 +31,7 @@ def execute(data, argv):
         return
 
     elif argv[0] == 'add':
-        if len(argv != 2):
+        if len(argv) != 2:
             raise Exception('usage: ' + usage)
 
         data.util.resolve_sound_or_alias(argv[1])
@@ -40,9 +40,9 @@ def execute(data, argv):
         data.db.conn.commit()
         data.reply(f'added {argv[1]} to cycle')
 
-    elif argv[0] == 'remove':
+    elif argv[0] in ('remove', 'delete'):
 
-        if len(argv != 2):
+        if len(argv) != 2:
             raise Exception('usage: ' + usage)
 
         c = data.db.conn.cursor()

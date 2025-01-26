@@ -123,7 +123,7 @@ def resolve_sound_or_alias(name, check_alias=False):
     else:
         return name
 
-def play_sound_or_alias(name, mods=[]):
+def play_sound_or_alias(name, mods=None):
     """Play a sound or alias.
 
     Parameters
@@ -133,4 +133,12 @@ def play_sound_or_alias(name, mods=[]):
     mods : list, optional
         The modifiers to apply to the sound, by default []
     """
-    audio.play(resolve_sound_or_alias(name), mods)
+    parts = name.split(' ')
+
+    if mods is None:
+        mods = []
+
+    if len(parts) > 1:
+        mods.extend(parts[1:])
+
+    audio.play(resolve_sound_or_alias(parts[0]), mods)

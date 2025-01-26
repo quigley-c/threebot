@@ -10,17 +10,19 @@ def execute(data, argv):
     res = c.fetchall()
 
     if len(argv) > 0:
+        newval = ' '.join(argv)
+
         # check if username is already in db
         c.execute('SELECT * FROM greetings WHERE username=?', [data.author])
 
         if len(res) == 0:
-            param = (data.author, argv[0])
+            param = (data.author, newval)
             c.execute('INSERT INTO greetings VALUES (?, ?)', param)
         else:
-            param = (argv[0], data.author)
+            param = (newval, data.author)
             c.execute('UPDATE greetings SET greeting=? WHERE username=?', param)
 
-        data.reply('Set greeting to {0}.'.format(argv[0]))
+        data.reply('Set greeting to {0}.'.format(newval))
     else:
         if len(res) > 0:
             c.execute('DELETE FROM greetings WHERE username=?', [data.author])

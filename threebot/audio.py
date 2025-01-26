@@ -4,6 +4,7 @@ import os
 import pyaudio
 import subprocess as sp
 import threading
+import random
 
 # Audio data format
 CHUNK=1024
@@ -89,6 +90,7 @@ def play(code, mods=[]):
     - up: plays the sound with a higher pitch
     - down: plays the sound with a lower pitch
     - chorus: plays the sound with a chorus effect
+    - random: any of the above effects
 
     Parameters
     ----------
@@ -142,13 +144,27 @@ def play(code, mods=[]):
         'down': ['asetrate=48000/2,aresample=48000,atempo=2'],
     }
 
-    args = ['ffmpeg', '-i', filepath]
-    
+    modargs = {
+        'loop1': ['-stream_loop', '1'],
+        'loop2': ['-stream_loop', '2'],
+        'loop3': ['-stream_loop', '3'],
+    }
+
+    args = ['ffmpeg']
     filters=[]
 
     for m in mods:
-        filters.extend(modfilters.get(m, []))
+        if m == 'random':
+            m = random.choice(list(modfilters.keys()))
 
+        if m in modfilters:
+            filters.extend(modfilters[m])
+        elif m in modargs:
+            args.extend(modargs[m])
+
+        # don't fail on bad mods for now
+
+    args.extend(['-i', filepath])
     filters.extend(['dynaudnorm=p=1'])
     args.extend(['-filter:a', ','.join(filters)])
     args.extend(['-f', 'mp3', '-'])

@@ -14,6 +14,7 @@ def execute(data, argv):
         # add command or sound to the stack
         if len(argv) < 2:
             data.reply(f'Invalid usage: stack push [sound|alias]')
+            return
         global_stack.push(argv[1])
         return
 

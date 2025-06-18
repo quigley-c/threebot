@@ -5,33 +5,55 @@ print('Connecting to local database..')
 conn = sqlite3.connect('threebot.db', check_same_thread=False)
 print('Connected.')
 
+# Apply table schema.
+c = conn.cursor()
+c.execute('CREATE TABLE IF NOT EXISTS links ( dest TEXT UNIQUE, author TEXT, timestamp DATETIME )')
+c.execute('CREATE TABLE IF NOT EXISTS pasta ( pastaname TEXT UNIQUE, content TEXT, author TEXT, timestamp DATETIME )')
+c.execute('CREATE TABLE IF NOT EXISTS aliases ( commandname TEXT UNIQUE, action TEXT, author TEXT, timestamp DATETIME )')
+c.execute('CREATE TABLE IF NOT EXISTS sounds ( soundname TEXT UNIQUE, author TEXT, timestamp DATETIME, source TEXT, start FLOAT, len FLOAT )')
+c.execute('CREATE TABLE IF NOT EXISTS greetings ( username TEXT UNIQUE, greeting TEXT )')
+c.execute('CREATE TABLE IF NOT EXISTS farewells ( username TEXT UNIQUE, farewell TEXT )')
+c.execute('CREATE TABLE IF NOT EXISTS binds ( username TEXT UNIQUE, bind TEXT )')
+c.execute('CREATE TABLE IF NOT EXISTS groups ( groupname TEXT UNIQUE, content TEXT, author TEXT, timestamp DATETIME )')
+c.execute('CREATE TABLE IF NOT EXISTS cycles ( sound TEXT, author TEXT )')
+
 # Print some database stats.
 c = conn.cursor()
 c.execute('SELECT COUNT(*) FROM sounds')
 print('{} sound entries in database.'.format(c.fetchone()[0]))
 
-# Apply table schema.
-c = conn.cursor()
-c.execute('CREATE TABLE IF NOT EXISTS links ( dest TEXT UNIQUE, author TEXT, timestamp DATETIME )')
-c.execute('CREATE TABLE IF NOT EXISTS aliases ( commandname TEXT UNIQUE, action TEXT, author TEXT, timestamp DATETIME )')
-c.execute('CREATE TABLE IF NOT EXISTS sounds ( soundname TEXT UNIQUE, author TEXT, timestamp DATETIME, source TEXT, start FLOAT, len FLOAT )')
-c.execute('CREATE TABLE IF NOT EXISTS greetings ( username TEXT UNIQUE, greeting TEXT )')
-c.execute('CREATE TABLE IF NOT EXISTS binds ( username TEXT UNIQUE, bind TEXT )')
-c.execute('CREATE TABLE IF NOT EXISTS groups ( groupname TEXT UNIQUE, content TEXT, author TEXT, timestamp DATETIME )')
-
 def resolve_alias(name):
-    """
-        Returns an array [commandname, action, author, timestamp] if an alias
-        with name <name> exists, or None if it does not.
+    """Resolves an alias to a sound code.
+
+    Parameters
+    ----------
+    name : str
+        The alias to resolve.
+
+    Returns
+    -------
+    str
+        The sound code that the alias resolves to, or None if the alias
+        does not exist.
     """
     c = conn.cursor()
     c.execute('SELECT * FROM aliases WHERE commandname=?', [name])
     return c.fetchone()
 
 def random_sound():
-    """Returns a random sound code. Raises an exception if no sounds are
-       available."""
+    """Returns a random sound code.
 
+    Returns
+    -------
+    str
+        A random sound code.
+
+    Raises
+    ------
+    RuntimeError
+        If there are no sounds in the database.
+    """
+ 
     c = conn.cursor()
     c.execute('SELECT * FROM sounds ORDER BY random() LIMIT 1')
 

@@ -8,8 +8,9 @@ from . import db
 import argparse
 import os
 import pymumble_py3 as pymumble
-from pymumble.constants import PYMUMBLE_CLBK_USERCREATED
-from pymmuble.constants import PYMUMBLE_CLBK_TEXTMESSAGERECEIVED
+from pymumble_py3.constants import PYMUMBLE_CLBK_USERCREATED
+from pymumble_py3.constants import PYMUMBLE_CLBK_USERREMOVED
+from pymumble_py3.constants import PYMUMBLE_CLBK_TEXTMESSAGERECEIVED
 import re
 import sys
 from datetime import datetime
@@ -22,6 +23,8 @@ HOST = os.getenv('THREEBOT_HOST', 'localhost')
 PORT = os.getenv('THREEBOT_PORT', 64738)
 NAME = os.getenv('THREEBOT_NAME', 'Threebot')
 PASS = os.getenv('THREEBOT_PASS', '')
+CERT = os.getenv('THREEBOT_CERT', 'threebot.crt')
+KEY = os.getenv('THREEBOT_CERT', 'threebot.key')
 
 # Parse connection parameters.
 parser = argparse.ArgumentParser(description='Threebot')
@@ -42,6 +45,8 @@ def run():
                            args.name,
                            port=args.port,
                            password=args.pw,
+                           certfile=CERT,
+                           keyfile=KEY,
                            stereo=True)
 
     conn.set_application_string(args.name)
@@ -49,6 +54,22 @@ def run():
     conn.is_ready()
 
     print('Connected!')
+
+    comment_rotation = 0
+    comment_payloads = []
+
+    while True:
+        try:
+            with open(f'comment{comment_rotation}', 'r') as f:
+                comment_payloads.append(f.read())
+                print('Loaded comment payload')
+        except Exception as e:
+            print(f'Stopped loading comment at {comment_rotation}: {e}')
+            break
+
+        comment_rotation += 1
+
+    conn.users.myself.comment('<br>'.join(comment_payloads))
 
     def message_callback(data):
         """Called when a message is sent to the channel."""
@@ -64,6 +85,7 @@ def run():
         # Build message metadata dict
         metadata = lambda: None # cool hack for empty namespace
 
+        metadata.threebot = conn.users.myself
         metadata.author = conn.users[data.actor].get_property('name')
         metadata.reply = reply
         metadata.bcast = bcast
@@ -71,14 +93,15 @@ def run():
         metadata.audio = audio
         metadata.util = util
         metadata.commands = commands
+        metadata.orig_message = str(data.message)
 
         # avoid danger
         if metadata.author == NAME:
             return
 
         # trim message content, remove HTML
-        data.message = data.message.strip()
         data.message = re.sub(r"<[^<>]*>", '', data.message)
+        data.message = data.message.strip()
 
         # scrape for links
         urls = re.findall(URL_REGEX, data.message)
@@ -100,6 +123,9 @@ def run():
 
         # test for command indicator
         if data.message[0] != '!': 
+            if NAME.lower() in data.message.lower():
+                bcast('damn thats crazy')
+            
             return
 
         # Write command execution to console
@@ -119,6 +145,25 @@ def run():
             bt = sys.exc_info()[1]
             m=f'{datetime.now()} {metadata.author} ! exception in command: {bt}'
             print(m)
+
+    def leave_callback(data, x):
+        """Called when a user leaves the server."""
+        c = db.conn.cursor()
+
+        # Log join to console
+        print(f'{datetime.now()} > {data.get_property("name")} left')
+
+        # check if user has greeting
+        c.execute('SELECT * FROM farewells WHERE username=?',
+                  [data.get_property('name')])
+
+        res = c.fetchone()
+
+        if res is not None:
+            try:
+                util.play_sound_or_alias(res[1])
+            except Exception as e:
+                print(f'Farewell failure: {str(e)}')
 
     def join_callback(data):
         """Called when a user joins the server."""
@@ -142,7 +187,7 @@ def run():
             # No greeting, play random sound
             try:
                 target = db.random_sound()
-                util.play_sound_or_alias(target)
+                util.play_sound_or_alias(target, [])
 
                 m = f'Random greeting: {target} (!greeting to update)'
                 data.send_text_message(m)
@@ -156,6 +201,7 @@ def run():
                                 message_callback)
 
     conn.callbacks.add_callback(PYMUMBLE_CLBK_USERCREATED, join_callback)
+    conn.callbacks.add_callback(PYMUMBLE_CLBK_USERREMOVED, leave_callback)
 
     # Start audio thread
     audio.start(conn)

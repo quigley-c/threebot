@@ -4,6 +4,7 @@ import os
 import pyaudio
 import subprocess as sp
 import threading
+import random
 
 # Audio data format
 CHUNK=1024
@@ -19,9 +20,13 @@ history = []
 HISTORY_LEN = 6
 
 def audio_thread(mumble_conn):
-    """Audio stream. This method is run on a separate thread and continuously
-       reads audio data from the microphone and writes it to the Mumble server.
-       """
+    """Audio thread. Reads audio from the pulse fifo and sends it to the server.
+
+    Parameters
+    ----------
+    mumble_conn : Mumble
+        The mumble connection object.
+    """
     global audio_thread_running
     audio_thread_running = True
 
@@ -74,9 +79,45 @@ def stop():
     print('Joined audio thread.')
 
 def play(code, mods=[]):
-    """Plays a sound with zero or more modifiers applied. May use mpg123
-       or ffmpeg to play the sound depending on whether any modifiers are
-       present."""
+    """Plays a sound from the local collection, optionally with modifiers.
+
+    Available modifiers:
+    - fast: plays the sound at double speed
+    - slow: plays the sound at half speed
+    - muffle: mutes the sound
+    - reverse: plays the sound backwards
+    - echo: plays the sound with an echo effect
+    - up: plays the sound with a higher pitch
+    - down: plays the sound with a lower pitch
+    - chorus: plays the sound with a chorus effect
+    - random: any of the above effects
+
+    Parameters
+    ----------
+    code : str
+        The sound code to play.
+    mods : list, optional
+        The modifiers to apply to the sound, by default []
+
+    Returns
+    -------
+    sp.Process
+        The process object for the sound playback.
+
+    Raises
+    ------
+    TypeError
+        If code is not a string or mods is not a list.
+    Exception
+        If the sound file is not found.
+    """
+
+    if type(code) != str:
+        raise TypeError('play(): code must be a string')
+
+    if type(mods) != list:
+        raise TypeError('play(): mods must be a list')
+
     filepath = 'sounds/%s.mp3' % code
 
     history.insert(0, code)
@@ -91,21 +132,66 @@ def play(code, mods=[]):
         return sp.Popen(['mpg123', filepath], stdout=sp.DEVNULL, stderr=sp.DEVNULL)
 
     modfilters = {
-        'fast': ['scaletempo=scale=2'],
-        'slow': ['scaletempo=scale=0.65'],
-        'muffle': ['lavfi=graph=[lowpass=frequency=75,dynaudnorm=f=10:g=21:m=50]'],
+        'fast': ['atempo=2.0'],
+        'slow': ['atempo=0.65'],
+        'muffle': ['lowpass=f=200'],
+        'chorus': ['chorus=0.7:0.9:55:0.4:0.25:2'],
+        'bass': ['bass=g=40'],
+        'echo': ['aecho=1:1:1200:0.25'],
+        'loud': ['volume=5'],
+        'reverse': ['areverse'],
+        'up': ['asetrate=48000*1.25,aresample=48000,atempo=1/1.25'],
+        'down': ['asetrate=48000/2,aresample=48000,atempo=2'],
     }
 
-    args = ['mpv']
+    modargs = {
+        'loop1': ['-stream_loop', '1'],
+        'loop2': ['-stream_loop', '2'],
+        'loop3': ['-stream_loop', '3'],
+    }
 
-    filters = ['lavfi=graph=[loudnorm]']
+    soxfilters = {
+        'reverb': ['gain', '-3', 'pad', '0', '4', 'reverb', '100', '100', '100', '100', '200'],
+    }
+
+    args = ['ffmpeg']
+    filters=[]
+    sfilters=[]
 
     for m in mods:
-        filters.extend(modfilters.get(m, []))
+        if m == 'random':
+            m = random.choice(list(modfilters.keys()))
 
-    if len(filters) > 0:
-        args.append(f'--af={",".join(filters)}')
+        if m in modfilters:
+            filters.extend(modfilters[m])
+        elif m in modargs:
+            args.extend(modargs[m])
+        elif m in soxfilters:
+            sfilters.extend(soxfilters[m])
+
+        # don't fail on bad mods for now
+
+    args.extend(['-i', filepath])
+    filters.extend(['dynaudnorm=p=1'])
+    args.extend(['-filter:a', ','.join(filters)])
+    args.extend(['-f', 'mp3', '-'])
+
+    sox_args = [
+        'sox',
+        '-t', 'mp3',
+        '-',
+    ]
 
 
-    args.append(filepath)
-    sp.Popen(args, stdout=sp.DEVNULL, stderr=sp.DEVNULL)
+    sox_args.extend([
+        '-t', 'mp3',
+        '-',
+    ])
+    sox_args.extend(sfilters)
+
+    decoder = sp.Popen(args, stdout=sp.PIPE, stderr=sp.DEVNULL)
+    sox_decoder = sp.Popen(sox_args, stdin=decoder.stdout, stdout=sp.PIPE, stderr=sp.DEVNULL)
+
+    player = sp.Popen(['mpv', '-vo', 'null', '-'], stdin=sox_decoder.stdout, stdout=sp.DEVNULL)
+
+    return player

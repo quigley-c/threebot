@@ -12,17 +12,17 @@ def execute(data, argv):
     
     if argv[0] == 'push':
         # add command or sound to the stack
-        if len(argv < 2):
+        if len(argv) < 2:
             data.reply(f'Invalid usage: stack push [sound|alias]')
         global_stack.push(argv[1])
         return
 
-    top = global_stack.peek()
+    top = global_stack[0]
     parts = top[0].split(' ')
     mods = []
     if len(parts) > 1:
         mods = parts[1:]
-    if len(global_stack < 1):
+    if len(global_stack) < 1:
         data.reply(f'The stack is empty. Add something with\n\'stack push [sound|alias]\'')
         return
     if argv[0] == 'pop':

@@ -23,6 +23,8 @@ HOST = os.getenv('THREEBOT_HOST', 'localhost')
 PORT = os.getenv('THREEBOT_PORT', 64738)
 NAME = os.getenv('THREEBOT_NAME', 'Threebot')
 PASS = os.getenv('THREEBOT_PASS', '')
+CERT = os.getenv('THREEBOT_CERT', 'threebot.crt')
+KEY = os.getenv('THREEBOT_CERT', 'threebot.key')
 
 # Parse connection parameters.
 parser = argparse.ArgumentParser(description='Threebot')
@@ -43,6 +45,8 @@ def run():
                            args.name,
                            port=args.port,
                            password=args.pw,
+                           certfile=CERT,
+                           keyfile=KEY,
                            stereo=True)
 
     conn.set_application_string(args.name)
@@ -50,6 +54,22 @@ def run():
     conn.is_ready()
 
     print('Connected!')
+
+    comment_rotation = 0
+    comment_payloads = []
+
+    while True:
+        try:
+            with open(f'comment{comment_rotation}', 'r') as f:
+                comment_payloads.append(f.read())
+                print('Loaded comment payload')
+        except Exception as e:
+            print(f'Stopped loading comment at {comment_rotation}: {e}')
+            break
+
+        comment_rotation += 1
+
+    conn.users.myself.comment('<br>'.join(comment_payloads))
 
     def message_callback(data):
         """Called when a message is sent to the channel."""
@@ -65,6 +85,7 @@ def run():
         # Build message metadata dict
         metadata = lambda: None # cool hack for empty namespace
 
+        metadata.threebot = conn.users.myself
         metadata.author = conn.users[data.actor].get_property('name')
         metadata.reply = reply
         metadata.bcast = bcast
@@ -72,14 +93,15 @@ def run():
         metadata.audio = audio
         metadata.util = util
         metadata.commands = commands
+        metadata.orig_message = str(data.message)
 
         # avoid danger
         if metadata.author == NAME:
             return
 
         # trim message content, remove HTML
-        data.message = data.message.strip()
         data.message = re.sub(r"<[^<>]*>", '', data.message)
+        data.message = data.message.strip()
 
         # scrape for links
         urls = re.findall(URL_REGEX, data.message)
@@ -101,6 +123,9 @@ def run():
 
         # test for command indicator
         if data.message[0] != '!': 
+            if NAME.lower() in data.message.lower():
+                bcast('damn thats crazy')
+            
             return
 
         # Write command execution to console
@@ -122,7 +147,6 @@ def run():
             print(m)
 
     def leave_callback(data, x):
-        print(data, x)
         """Called when a user leaves the server."""
         c = db.conn.cursor()
 

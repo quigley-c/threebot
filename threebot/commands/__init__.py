@@ -15,6 +15,7 @@ for f in os.scandir(dir_path):
     if path.isfile(f.path) and path.basename(f.path) != '__init__.py':
         name = str(path.basename(f.path)).split('.')[0]
         spec = importlib.util.spec_from_file_location(name, str(f.path))
+        print(spec)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 

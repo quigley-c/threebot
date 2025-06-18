@@ -150,8 +150,13 @@ def play(code, mods=[]):
         'loop3': ['-stream_loop', '3'],
     }
 
+    soxfilters = {
+        'reverb': ['gain', '-3', 'pad', '0', '4', 'reverb', '100', '100', '100', '100', '200'],
+    }
+
     args = ['ffmpeg']
     filters=[]
+    sfilters=[]
 
     for m in mods:
         if m == 'random':
@@ -161,6 +166,8 @@ def play(code, mods=[]):
             filters.extend(modfilters[m])
         elif m in modargs:
             args.extend(modargs[m])
+        elif m in soxfilters:
+            sfilters.extend(soxfilters[m])
 
         # don't fail on bad mods for now
 
@@ -169,7 +176,22 @@ def play(code, mods=[]):
     args.extend(['-filter:a', ','.join(filters)])
     args.extend(['-f', 'mp3', '-'])
 
+    sox_args = [
+        'sox',
+        '-t', 'mp3',
+        '-',
+    ]
+
+
+    sox_args.extend([
+        '-t', 'mp3',
+        '-',
+    ])
+    sox_args.extend(sfilters)
+
     decoder = sp.Popen(args, stdout=sp.PIPE, stderr=sp.DEVNULL)
-    player = sp.Popen(['mpv', '-vo', 'null', '-'], stdin=decoder.stdout, stdout=sp.DEVNULL)
+    sox_decoder = sp.Popen(sox_args, stdin=decoder.stdout, stdout=sp.PIPE, stderr=sp.DEVNULL)
+
+    player = sp.Popen(['mpv', '-vo', 'null', '-'], stdin=sox_decoder.stdout, stdout=sp.DEVNULL)
 
     return player

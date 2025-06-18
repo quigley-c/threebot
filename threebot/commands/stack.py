@@ -18,14 +18,14 @@ def execute(data, argv):
         global_stack.push(argv[1])
         return
 
+    if len(global_stack) < 1:
+        data.reply(f'The stack is empty. Add something with \'stack push [sound|alias]\'')
+        return
     top = global_stack[0]
     parts = top[0].split(' ')
     mods = []
     if len(parts) > 1:
         mods = parts[1:]
-    if len(global_stack) < 1:
-        data.reply(f'The stack is empty. Add something with \'stack push [sound|alias]\'')
-        return
     if argv[0] == 'pop':
         # execute command or sound and remove from the stack
         data.util.play_sound_or_alias(parts[0], mods)

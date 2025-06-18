@@ -1,8 +1,7 @@
 # Custom bind command.
 
 desc = 'Plays your bind sound. Rebinds on input.'
-usage = 'bind [CODE|ALIAS]'
-
+usage = 'bind [CODE|ALIAS] [MODS]'
 def execute(data, argv):
     if len(argv) < 1:
         # search for user bind
@@ -12,14 +11,20 @@ def execute(data, argv):
         results = c.fetchone()
 
         if results is None:
-            raise Exception('No bind set! Usage: bind [CODE|ALIAS]')
+            raise Exception('No bind set! Usage: bind [CODE|ALIAS] [MODS]')
 
-        data.util.play_sound_or_alias(results[0])
-        data.reply(f'Playing bind: {results[0]}')
+        parts = results[0].split(' ')
+
+        mods = []
+        if len(parts) > 1:
+            mods = parts[1:]
+
+        data.util.play_sound_or_alias(parts[0], mods)
+        data.reply(f'Playing bind: {" ".join(parts)}')
         return
 
-    if len(argv) > 1:
-        raise Exception('too many arguments. Usage: bind [CODE|ALIAS]')
+    # collect mods
+    comb = ' '.join(argv)
 
-    data.util.set_bind(data.author, argv[0])
-    data.reply(f'Set bind to {argv[0]}')
+    data.util.set_bind(data.author, comb)
+    data.reply(f'Set bind to {comb}')

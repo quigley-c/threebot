@@ -4,12 +4,21 @@ from . import audio
 from . import db
 
 def set_bind(author, name):
-    """Set's <author>'s bind to <name>. Name must be a valid sound code
-       or alias."""
+    """Sets the bind for a user.
+
+    Parameters
+    ----------
+    author : str
+        The username of the user to set the bind for.
+    name : str
+        The name of the sound to bind to.
+    """
     c = db.conn.cursor()
 
+    base = name.split(' ')[0]
+
     # verify the bind is a valid sound
-    resolve_sound_or_alias(name)
+    resolve_sound_or_alias(base)
 
     # check if binding or rebinding
     c.execute('SELECT * FROM binds WHERE username=?', [author])
@@ -22,7 +31,22 @@ def set_bind(author, name):
     db.conn.commit()
 
 def into_pages(headers, rows, rows_per_page=32):
-    """Converts data into HTML pages."""
+    """Splits a list of rows into pages.
+
+    Parameters
+    ----------
+    headers : list of str
+        The headers for the table.
+    rows : list of list of str
+        The rows for the table.
+    rows_per_page : int, optional
+        The number of rows per page, by default 32
+
+    Returns
+    -------
+    list of str
+        A list of HTML tables, each table representing a page.
+    """
     pages = []
 
     while len(rows) > 0:
@@ -47,7 +71,26 @@ def into_pages(headers, rows, rows_per_page=32):
     return pages
 
 def resolve_sound_or_alias(name, check_alias=False):
-    """Resolves a sound input to a sound name. Returns a pair (code, is_alias)"""
+    """Resolves a sound or alias to a sound code.
+
+    Parameters
+    ----------
+    name : str
+        The name of the sound or alias to resolve.
+    check_alias : bool, optional
+        Whether to test if an alias is resolved, by default False
+
+    Returns
+    -------
+    str
+        The sound code that the name resolves to.
+
+    Raises
+    ------
+    Exception
+        If the name does not resolve to a sound or alias, or if the alias
+        does not play a sound.
+    """
     c = db.conn.cursor()
 
     # try and resolve as an alias
@@ -80,6 +123,22 @@ def resolve_sound_or_alias(name, check_alias=False):
     else:
         return name
 
-def play_sound_or_alias(name):
-    """Plays a sound either by code or alias."""
-    audio.play(resolve_sound_or_alias(name))
+def play_sound_or_alias(name, mods=None):
+    """Play a sound or alias.
+
+    Parameters
+    ----------
+    name : str
+        The name of the sound or alias to play.
+    mods : list, optional
+        The modifiers to apply to the sound, by default []
+    """
+    parts = name.split(' ')
+
+    if mods is None:
+        mods = []
+
+    if len(parts) > 1:
+        mods.extend(parts[1:])
+
+    audio.play(resolve_sound_or_alias(parts[0]), mods)

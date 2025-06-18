@@ -30,7 +30,9 @@ def execute(data, argv):
 
     # clip a youtube video
     data.reply('Fetching..')
-    command = ['youtube-dl', '-x',
+    command = ['yt-dlp',
+                '--cookies', '/home/jtst/cookies.txt',
+                '-x',
                 '--audio-format', 'mp3',
                 '-o', 'sounds/{0}.tmp.mp3'.format(name), argv[0]]
     ytdl = sp.check_output(command, stderr=sp.PIPE)

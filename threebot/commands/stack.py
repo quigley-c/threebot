@@ -15,13 +15,13 @@ def execute(data, argv):
         if len(argv) < 2:
             data.reply(f'Invalid usage: stack push [sound|alias]')
             return
-        global_stack.append(argv[1:])
+        global_stack.append(' '.join(argv[1:]))
         return
 
     if len(global_stack) < 1:
         data.reply(f'The stack is empty. Add something with \'stack push [sound|alias]\'')
         return
-    top = global_stack[len(global_stack-1)]
+    top = global_stack[-1]
     parts = top.split(' ')
     mods = []
     if len(parts) > 1:
